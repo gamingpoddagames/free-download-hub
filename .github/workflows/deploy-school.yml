@@ -1,0 +1,43 @@
+name: Deploy Sinhala School Website
+on:
+  push:
+    branches: [main]
+    paths:
+      - "school/**"
+      - ".github/workflows/deploy-school.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: school-pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Assemble public website
+        run: |
+          mkdir -p _site
+          cp -R school/. _site/
+          echo 'User-agent: *' > _site/robots.txt
+          echo 'Allow: /' >> _site/robots.txt
+          cat > _site/sitemap.xml <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://gamingpoddagames.github.io/free-download-hub/</loc></url>
+          </urlset>
+          EOF
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Publish to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
