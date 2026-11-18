@@ -1,0 +1,44 @@
+name: School Daily Content (No AI)
+on:
+  schedule:
+    # 03:17 UTC = 08:47 Asia/Colombo daily
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to Facebook if token is configured?'
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: school-daily-content
+  cancel-in-progress: false
+jobs:
+  generate-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate original practice question and optionally publish
+        env:
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          FB_GRAPH_VERSION: v27.0
+          RUN_EVENT: ${{ github.event_name }}
+          MANUAL_PUBLISH: ${{ inputs.publish }}
+        run: |
+          if [[ "$RUN_EVENT" == "schedule" || "$MANUAL_PUBLISH" == "true" ]]; then
+            python school/daily_publisher.py --publish
+          else
+            python school/daily_publisher.py
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: school-daily-content
+          path: school/output/
+          retention-days: 30
